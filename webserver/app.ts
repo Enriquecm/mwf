@@ -26,5 +26,4 @@ else
 }
 
 var websrv = new nsWS.WebServer(config);
-console.log(websrv.routes);
 websrv.listen();

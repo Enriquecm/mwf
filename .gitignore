@@ -1,3 +1,4 @@
 webclient/min/*
-webserver/*.js
+webserver/**/*.js
+webserver/**/*.map
 .idea/*

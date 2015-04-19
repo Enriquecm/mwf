@@ -20,15 +20,28 @@ export class WebServer
     this.root  = config.root;
     this.index = config.index;
     this.port  = config.port;
-    this.ConfigToRoutes(config.statics, config.routes);
+    this.configToRoutes(config.statics, config.routes);
 
-    this.httpsrv = nsHttp.createServer(function (req, res) {
-      res.writeHead(200, {"Content-type": "text/html"});
-      res.end();
+    this.httpsrv = nsHttp.createServer((req, res) => {
+      this.dispatch(req, res);
     });
   }
 
-  AddStaticRoute(path: string, virtual?: string)
+  dispatch(req: nsHttp.IncomingMessage, res: nsHttp.ServerResponse): void
+  {
+    var pathname = nsUrl.parse(req.url).pathname;
+    if (this.routes.hasOwnProperty(pathname))
+    {
+      this.routes[pathname](req, res);
+    }
+    else
+    {
+      res.writeHead(404, {"Content-type": "text/html"});
+      res.end("Not found");
+    }
+  }
+
+  addStaticRoute(path: string, virtual?: string): void
   {
     var absoluteRootFilepath = nsPath.join(this.root, path);
     var urls = nsUtils.GetRecursiveFilepaths(absoluteRootFilepath);
@@ -44,7 +57,7 @@ export class WebServer
         mime: nsUtils.GetMimeTypeFromExtname(nsUtils.GetExtname(absolutePath))
       };
 
-      this.routes[url] = function (req, res) {
+      this.routes[url] = (req, res) => {
         var pathname = nsUrl.parse(req.url).pathname;
         var cache: IFileCache = this.caches[pathname];
         nsUtils.SendFile(res, cache.buffer, cache.mime);
@@ -52,18 +65,18 @@ export class WebServer
     }
   }
 
-  AddCallbackRoute(route: ICallbackRoute)
+  addCallbackRoute(route: ICallbackRoute): void
   {
 
   }
 
-  private ConfigToRoutes(statics: IStaticRoute[], routes: ICallbackRoute[])
+  private configToRoutes(statics: IStaticRoute[], routes: ICallbackRoute[]): void
   {
     if (statics)
     {
       for (var i in statics)
       {
-        this.AddStaticRoute(statics[i].path, statics[i].virtual);
+        this.addStaticRoute(statics[i].path, statics[i].virtual);
       }
     }
 
@@ -71,12 +84,12 @@ export class WebServer
     {
       for (var j in routes)
       {
-        this.AddCallbackRoute(routes[j]);
+        this.addCallbackRoute(routes[j]);
       }
     }
   }
 
-  listen()
+  listen(): void
   {
     this.httpsrv.listen(this.port);
   }
@@ -105,7 +118,7 @@ interface IFileCacheCollection
 
 interface IRoute
 {
-  [index: string]: (req: nsHttp.ServerRequest, res: nsHttp.ServerResponse) => void;
+  [index: string]: (req: nsHttp.IncomingMessage, res: nsHttp.ServerResponse) => void;
 }
 
 interface IStaticRoute

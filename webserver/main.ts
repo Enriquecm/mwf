@@ -39,7 +39,8 @@ config.routes = [
         name: "encryption",
         type: ParamType.String,
         required: true,
-        source: ParamSource.COOKIE}
+        source: ParamSource.COOKIE
+      }
     ],
     callback: function(){}
   }

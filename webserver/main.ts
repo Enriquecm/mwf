@@ -1,12 +1,18 @@
 /// <reference path='../typings/node/node.d.ts' />
 
-import nsWS = require("./libs/webserver/webserver");
-import nsPath = require("path");
+/* Namespaces
+ * ----------------------------------------------------- */
+import nsWS    = require("./libs/webserver/webserver");
+import nsPath  = require("path");
 import nsUtils = require("./libs/utils");
 
+/* Facilities
+ * ----------------------------------------------------- */
 var ParamSource = nsWS.ParamSource;
-var ParamType = nsWS.ParamType;
+var ParamType   = nsWS.ParamType;
 
+/* Initial WebServer configuration
+ * ----------------------------------------------------- */
 var config = new nsWS.WebServerConfig();
 
 config.port    = 8080;
@@ -16,22 +22,28 @@ config.favicon = "/assets/favicon.ico";
 
 config.defaultParamSource = ParamSource.PLAYLOAD;
 
-config.statics = [{path: "/assets/"}];
+/* Static routes
+ * ----------------------------------------------------- */
+var statics: nsWS.IStaticRoute[] = [];
+statics.push({path: "/assets/"});
 
 if (nsUtils.IsDebug())
 {
-  config.statics.push({path: "/src/css/", virtual: "/css/"});
-  config.statics.push({path: "/src/html/", virtual: "/"});
-  config.statics.push({path: "/src/js/", virtual: "/js/"});
+  statics.push({path: "/src/css/", virtual: "/css/"});
+  statics.push({path: "/src/html/", virtual: "/"});
+  statics.push({path: "/src/js/", virtual: "/js/"});
 }
 else
 {
-  config.statics.push({path: "/min/css/", virtual: "/css/"});
-  config.statics.push({path: "/min/html/", virtual: "/"});
-  config.statics.push({path: "/min/js/", virtual: "/js/"});
+  statics.push({path: "/min/css/", virtual: "/css/"});
+  statics.push({path: "/min/html/", virtual: "/"});
+  statics.push({path: "/min/js/", virtual: "/js/"});
 }
+config.statics = statics;
 
-config.routes = [
+/* Callback routes
+ * ----------------------------------------------------- */
+var routes: nsWS.ICallbackRoute[] = [
   {
     url: "/api/signin",
     params: [
@@ -42,9 +54,14 @@ config.routes = [
         source: ParamSource.COOKIE
       }
     ],
-    callback: function(){}
+    callback: function(connection) {
+      console.log(connection);
+    }
   }
 ];
+config.routes = routes;
 
+/* Apply configuration and start listening
+ * ----------------------------------------------------- */
 var websrv = new nsWS.WebServer(config);
 websrv.listen();

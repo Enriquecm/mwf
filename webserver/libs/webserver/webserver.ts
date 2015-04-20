@@ -157,18 +157,19 @@ interface IRoute
   [index: string]: (req: nsHttp.IncomingMessage, res: nsHttp.ServerResponse) => void;
 }
 
-interface IStaticRoute
+export interface IStaticRoute
 {
   path: string;
   virtual?: string
 }
 
-interface ICallbackRoute
+export interface ICallbackRoute
 {
   url: string;
+  params: IRequestParam[];
 }
 
-interface ICallbackRouteParam
+export interface IRequestParam
 {
   name: string;
   type: ParamType;

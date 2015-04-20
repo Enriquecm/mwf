@@ -25,5 +25,15 @@ else
   config.statics.push({path: "/min/js/", virtual: "/js/"});
 }
 
+config.routes = [
+  {
+    url: "/api/signin",
+    params: [
+      {name: "encryption", required: true, source: nsWS.ParamSource.COOKIE}
+    ],
+    callback: function(){}
+  }
+];
+
 var websrv = new nsWS.WebServer(config);
 websrv.listen();

@@ -95,6 +95,11 @@ export class WebServer
   }
 }
 
+export enum ParamSource
+{
+  URL, PLAYLOAD, COOKIE
+}
+
 export class WebServerConfig
 {
   port: number;

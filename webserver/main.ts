@@ -2,7 +2,10 @@
 
 import nsWS = require("./libs/webserver/webserver");
 import nsPath = require("path");
-import nsUtils = require("./utils");
+import nsUtils = require("./libs/utils");
+
+var ParamSource = nsWS.ParamSource;
+var ParamType = nsWS.ParamType;
 
 var config = new nsWS.WebServerConfig();
 
@@ -10,6 +13,9 @@ config.port    = 8080;
 config.root    = nsPath.join(__dirname, "..", "webclient");
 config.index   = (nsUtils.IsDebug() ? "/src/" : "/min/") + "html/index.html";
 config.favicon = "/assets/favicon.ico";
+
+config.defaultParamSource = ParamSource.PLAYLOAD;
+
 config.statics = [{path: "/assets/"}];
 
 if (nsUtils.IsDebug())
@@ -29,7 +35,11 @@ config.routes = [
   {
     url: "/api/signin",
     params: [
-      {name: "encryption", required: true, source: nsWS.ParamSource.COOKIE}
+      {
+        name: "encryption",
+        type: ParamType.String,
+        required: true,
+        source: ParamSource.COOKIE}
     ],
     callback: function(){}
   }

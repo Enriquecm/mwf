@@ -6,17 +6,20 @@ import nsPath  = require("path");
 import nsUrl   = require("url");
 import nsUtils = require("./utils");
 
+/**
+ * @todo In the class constructor, config.index is possibly causing cache duplication
+ */
 export class WebServer
 {
   httpsrv: nsHttp.Server;
   root: string;
   index: string;
   port: number;
+  defaultParamSource: ParamSource;
   routes: IRoute[] = [];
   caches: IFileCacheCollection[] = [];
 
   /**
-   * @todo config.index is possibly duplicating the cache
    * @param config
    */
   constructor(config: WebServerConfig)
@@ -24,6 +27,7 @@ export class WebServer
     this.root  = config.root;
     this.index = config.index;
     this.port  = config.port;
+    this.defaultParamSource = config.defaultParamSource;
     this.configToRoutes(config.statics, config.routes);
     this.addStaticRoute(config.index, "/");
 
@@ -121,12 +125,18 @@ export enum ParamSource
   URL, PLAYLOAD, COOKIE
 }
 
+export enum ParamType
+{
+  String, Number, Boolean, Object
+}
+
 export class WebServerConfig
 {
   port: number;
   root: string;
   index: string;
   favicon: string;
+  defaultParamSource: ParamSource;
   statics: IStaticRoute[];
   routes: ICallbackRoute[];
 }
@@ -156,4 +166,12 @@ interface IStaticRoute
 interface ICallbackRoute
 {
   url: string;
+}
+
+interface ICallbackRouteParam
+{
+  name: string;
+  type: ParamType;
+  required?: boolean;
+  source: ParamSource;
 }

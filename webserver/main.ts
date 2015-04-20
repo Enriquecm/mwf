@@ -8,7 +8,7 @@ var config = new nsWS.WebServerConfig();
 
 config.port    = 8080;
 config.root    = nsPath.join(__dirname, "..", "webclient");
-config.index   = (nsUtils.IsDebug() ? "/src/" : "/min/") + "index.html";
+config.index   = (nsUtils.IsDebug() ? "/src/" : "/min/") + "html/index.html";
 config.favicon = "/assets/favicon.ico";
 config.statics = [{path: "/assets/"}];
 

@@ -15,12 +15,17 @@ export class WebServer
   routes: IRoute[] = [];
   caches: IFileCacheCollection[] = [];
 
+  /**
+   * @todo config.index is possibly duplicating the cache
+   * @param config
+   */
   constructor(config: WebServerConfig)
   {
     this.root  = config.root;
     this.index = config.index;
     this.port  = config.port;
     this.configToRoutes(config.statics, config.routes);
+    this.addStaticRoute(config.index, "/");
 
     this.httpsrv = nsHttp.createServer((req, res) => {
       this.dispatch(req, res);
@@ -43,26 +48,42 @@ export class WebServer
 
   addStaticRoute(path: string, virtual?: string): void
   {
-    var absoluteRootFilepath = nsPath.join(this.root, path);
-    var urls = nsUtils.GetRecursiveFilepaths(absoluteRootFilepath);
+    var rootFilepath = nsPath.join(this.root, path);
+    var stat = nsFs.statSync(rootFilepath);
 
-    for (var i in urls)
+    if (stat.isFile())
     {
-      var url          = (virtual ? virtual : path) + urls[i];
-      var relativePath = path + urls[i];
-      var absolutePath = nsPath.join(this.root, relativePath);
-
-      this.caches[url] = {
-        buffer: nsFs.readFileSync(absolutePath),
-        mime: nsUtils.GetMimeTypeFromExtname(nsUtils.GetExtname(absolutePath))
-      };
-
-      this.routes[url] = (req, res) => {
-        var pathname = nsUrl.parse(req.url).pathname;
-        var cache: IFileCache = this.caches[pathname];
-        nsUtils.SendFile(res, cache.buffer, cache.mime);
-      };
+      var url = virtual ? virtual : path;
+      this.addCachedRoute(url, rootFilepath);
     }
+    else if(stat.isDirectory())
+    {
+      var urls = nsUtils.GetRecursiveFilepaths(rootFilepath);
+      for (var i in urls)
+      {
+        var url = (virtual ? virtual : path) + urls[i];
+        var filepath = nsPath.join(this.root, path + urls[i]);
+        this.addCachedRoute(url, filepath);
+      }
+    }
+    else
+    {
+      throw new Error("Path \"" + path + "\" is not a file nor folder.");
+    }
+  }
+
+  private addCachedRoute(url: string, filepath: string)
+  {
+    this.caches[url] = {
+      buffer: nsFs.readFileSync(filepath),
+      mime: nsUtils.GetMimeTypeFromExtname(nsUtils.GetExtname(filepath))
+    };
+
+    this.routes[url] = (req, res) => {
+      var pathname = nsUrl.parse(req.url).pathname;
+      var cache: IFileCache = this.caches[pathname];
+      nsUtils.SendFile(res, cache.buffer, cache.mime);
+    };
   }
 
   addCallbackRoute(route: ICallbackRoute): void

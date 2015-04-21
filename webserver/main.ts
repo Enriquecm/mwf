@@ -2,66 +2,36 @@
 
 /* Namespaces
  * ----------------------------------------------------- */
-import nsWS    = require("./libs/webserver/webserver");
-import nsPath  = require("path");
-import nsUtils = require("./libs/utils");
+import APP   = require("./app");
+import PATH  = require("path");
+import UTILS = require("./libs/utils");
+import WS    = require("./libs/webserver");
 
-/* Facilities
+/* WebServer basic setup
  * ----------------------------------------------------- */
-var ParamSource = nsWS.ParamSource;
-var ParamType   = nsWS.ParamType;
+var websrv = new WS.WebServer();
 
-/* Initial WebServer configuration
- * ----------------------------------------------------- */
-var config = new nsWS.WebServerConfig();
-
-config.port    = 8080;
-config.root    = nsPath.join(__dirname, "..", "webclient");
-config.index   = (nsUtils.IsDebug() ? "/src/" : "/min/") + "html/index.html";
-config.favicon = "/assets/favicon.ico";
-
-config.defaultParamSource = ParamSource.PLAYLOAD;
+websrv.setPort(8080);
+websrv.setRoot(PATH.join(__dirname, "..", "webclient"));
+websrv.setFavicon("/assets/favicon.ico");
 
 /* Static routes
  * ----------------------------------------------------- */
-var statics: nsWS.IStaticRoute[] = [];
-statics.push({path: "/assets/"});
-
-if (nsUtils.IsDebug())
+if (UTILS.isDebug())
 {
-  statics.push({path: "/src/css/", virtual: "/css/"});
-  statics.push({path: "/src/html/", virtual: "/"});
-  statics.push({path: "/src/js/", virtual: "/js/"});
+  websrv.addStaticRoute("/src/css/", "/css/");
+  websrv.addStaticRoute("/src/html/", "/");
+  websrv.addStaticRoute("/src/js/", "/js/");
+  websrv.addStaticRoute("/src/html/index.html", "/");
 }
 else
 {
-  statics.push({path: "/min/css/", virtual: "/css/"});
-  statics.push({path: "/min/html/", virtual: "/"});
-  statics.push({path: "/min/js/", virtual: "/js/"});
+  websrv.addStaticRoute("/min/css/", "/css/");
+  websrv.addStaticRoute("/min/html/", "/");
+  websrv.addStaticRoute("/min/js/", "/js/");
+  websrv.addStaticRoute("/min/html/index.html", "/");
 }
-config.statics = statics;
 
-/* Callback routes
+/* Start listening
  * ----------------------------------------------------- */
-var routes: nsWS.ICallbackRoute[] = [
-  {
-    url: "/api/signin",
-    params: [
-      {
-        name: "encryption",
-        type: ParamType.String,
-        required: true,
-        source: ParamSource.COOKIE
-      }
-    ],
-    callback: function(connection) {
-      console.log(connection);
-    }
-  }
-];
-config.routes = routes;
-
-/* Apply configuration and start listening
- * ----------------------------------------------------- */
-var websrv = new nsWS.WebServer(config);
 websrv.listen();

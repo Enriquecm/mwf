@@ -82,6 +82,23 @@ export class WebServer
     }
   }
 
+  addCallbackRoute(
+    url: string,
+    cb: (req: HTTP.IncomingMessage, res: HTTP.ServerResponse) => void): void
+  {
+    this.routes[url] = cb;
+  }
+
+  addAppRoute(
+    url: string,
+    params: IRequestParam[],
+    cb: (params: IAppParam[], cb: IAppCallback) => void)
+  {
+    this.routes[url] = (req, res) => {
+      console.log("...");
+    }
+  }
+
   listen(): void
   {
     this.httpsrv.listen(this.port);
@@ -119,11 +136,18 @@ enum RouteType
   Static, Callback
 }
 
-enum ResponseStatus
+export enum ResponseStatus
 {
   Success,
   Error,
   Unauthorized
+}
+
+export enum HttpStatus
+{
+  OK = 200,
+  NotFound = 404,
+  Error = 500,
 }
 
 /* Interfaces
@@ -145,19 +169,6 @@ interface IRoute
     type: RouteType;
     cb: (req: HTTP.IncomingMessage, res: HTTP.ServerResponse) => void;
   };
-}
-
-export interface IStaticRoute
-{
-  path: string;
-  virtual?: string
-}
-
-export interface ICallbackRoute
-{
-  url: string;
-  params: IRequestParam[];
-  cb: (params: IAppParam[], callback: IAppCallback) => void;
 }
 
 export interface IAppParam
@@ -187,8 +198,29 @@ export function getUrlPathname(req: HTTP.IncomingMessage)
   return URL.parse(req.url).pathname;
 }
 
-export function sendFile(res: HTTP.ServerResponse, buffer: Buffer, mime: string): void
+export function send(
+  status: HttpStatus,
+  res: HTTP.ServerResponse,
+  data: string,
+  mime: string): void
 {
-  res.writeHead(200, {"Content-type": mime});
-  res.end(buffer);
+  res.writeHead(status, {"Content-type": mime});
+  res.end(data);
+}
+
+export function sendFile(
+  res: HTTP.ServerResponse,
+  buffer: Buffer,
+  mime: string): void
+{
+  send(HttpStatus.OK, res, buffer.toString(), mime);
+}
+
+export function sendJSON(res: HTTP.ServerResponse, json: object): void
+{
+  send(
+    HttpStatus.OK,
+    res,
+    JSON.stringify(json),
+    UTILS.getMimeType(UTILS.SupportedExt.JSON));
 }

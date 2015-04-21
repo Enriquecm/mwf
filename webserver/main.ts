@@ -7,6 +7,11 @@ import PATH  = require("path");
 import UTILS = require("./libs/utils");
 import WS    = require("./libs/webserver");
 
+/* Facilities
+ * ----------------------------------------------------- */
+var Source = WS.ParamSource;
+var Type   = WS.ParamType;
+
 /* WebServer basic setup
  * ----------------------------------------------------- */
 var websrv = new WS.WebServer();
@@ -31,6 +36,13 @@ else
   websrv.addStaticRoute("/min/js/", "/js/");
   websrv.addStaticRoute("/min/html/index.html", "/");
 }
+
+/* App routes
+ * ----------------------------------------------------- */
+websrv.addAppRoute(
+  "/api/signin",
+  [{name: "encryption", type: Type.String, required: true, source: Source.COOKIE}],
+  APP.SignIn);
 
 /* Start listening
  * ----------------------------------------------------- */

@@ -8,6 +8,11 @@ import PATH  = require("path");
 import URL   = require("url");
 import UTILS = require("./utils");
 
+/* Facilities
+ * ----------------------------------------------------- */
+var getMimeType  = UTILS.getMimeType;
+var SupportedExt = UTILS.SupportedExt;
+
 /**
  * WebServer
  * ----------------------------------------------------- */
@@ -36,8 +41,7 @@ export class WebServer
     }
     else
     {
-      res.writeHead(404, {"Content-type": "text/html"});
-      res.end("Not found");
+      send(HttpStatus.NotFound, res, "Not found", getMimeType(SupportedExt.TXT));
     }
   }
 
@@ -216,11 +220,11 @@ export function sendFile(
   send(HttpStatus.OK, res, buffer.toString(), mime);
 }
 
-export function sendJSON(res: HTTP.ServerResponse, json: object): void
+export function sendJSON(res: HTTP.ServerResponse, json: Object): void
 {
   send(
     HttpStatus.OK,
     res,
     JSON.stringify(json),
-    UTILS.getMimeType(UTILS.SupportedExt.JSON));
+    getMimeType(SupportedExt.JSON));
 }

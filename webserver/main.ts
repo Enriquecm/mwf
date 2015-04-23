@@ -39,10 +39,13 @@ else
 
 /* App routes
  * ----------------------------------------------------- */
-websrv.addAppRoute(
-  "/api/signin",
-  [{name: "encryption", type: Type.String, required: true, source: Source.COOKIE}],
+websrv.addAppRoute("/api/signin",
+  [{name: "encryption"}],
   APP.SignIn);
+
+websrv.addAppRoute("/api/signout",
+  [{name: "token", source: Source.Cookie}],
+  APP.SignOut);
 
 /* Start listening
  * ----------------------------------------------------- */

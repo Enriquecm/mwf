@@ -86,20 +86,17 @@ export class WebServer
     }
   }
 
-  addCallbackRoute(
-    url: string,
-    cb: (req: HTTP.IncomingMessage, res: HTTP.ServerResponse) => void): void
+  addCallbackRoute(url: string, cb: IHttpConnection): void
   {
     this.routes[url] = cb;
   }
 
-  addAppRoute(
-    url: string,
-    params: IRequestParam[],
-    cb: (params: IAppParam[], cb: IAppCallback) => void)
+  addAppRoute(url: string, params: IRequestParam[], cb: IApp)
   {
     this.routes[url] = (req, res) => {
-      console.log("...");
+      cb({"name": params[0].name}, (a, b, c) => {
+        res.end();
+      });
     }
   }
 
@@ -135,6 +132,11 @@ export enum ParamType
   String, Number, Boolean, Object
 }
 
+export enum ParamFormat
+{
+  JSON
+}
+
 enum RouteType
 {
   Static, Callback
@@ -156,6 +158,11 @@ export enum HttpStatus
 
 /* Interfaces
  * ----------------------------------------------------- */
+export interface IHttpConnection
+{
+  (req: HTTP.IncomingMessage, res: HTTP.ServerResponse): void;
+}
+
 interface IFileCache
 {
   buffer: Buffer;
@@ -171,28 +178,39 @@ interface IRoute
 {
   [index: string]: {
     type: RouteType;
-    cb: (req: HTTP.IncomingMessage, res: HTTP.ServerResponse) => void;
+    cb: IHttpConnection;
   };
 }
 
-export interface IAppParam
+export interface IApp
+{
+  (params: IAppParams, cb: IAppCallback): void;
+}
+
+export interface IAppParams
 {
   [index: string]: any;
 }
 
 export interface IAppCallback
 {
-  mime: string;
-  status: ResponseStatus;
-  data: string;
+  (mime: string, status: ResponseStatus, data: string): void;
 }
 
+/**
+ * Defaults:
+ *   type     = ParamType.String
+ *   required = true
+ *   source   = ParamSource.Playload
+ *   format   = ParamFormat.JSON
+ */
 export interface IRequestParam
 {
   name: string;
-  type: ParamType;
+  type?: ParamType;
   required?: boolean;
-  source: ParamSource;
+  source?: ParamSource;
+  format?: ParamFormat;
 }
 
 /* HTTP Utils

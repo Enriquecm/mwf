@@ -23,6 +23,7 @@ export class WebServer
   private port: number;
   private routes: IRoute[] = [];
   private caches: IFileCacheCollection[] = [];
+  private defaultResponseMimeType: string = getMimeType(SupportedExt.JSON);
 
   constructor()
   {
@@ -91,11 +92,17 @@ export class WebServer
     this.routes[url] = cb;
   }
 
-  addAppRoute(url: string, params: IRequestParam[], cb: IApp)
+  addAppRoute(url: string, params: IRequestParam[], cb: IApp, routeMimeType?: string)
   {
-    this.routes[url] = (req, res) => {
-      cb({"name": params[0].name}, (a, b, c) => {
-        res.end();
+    this.routes[url] = (req, res) =>
+    {
+      var handledParams: IAppParams = HandleAppParams(params);
+      var mimeType = routeMimeType ? routeMimeType : this.defaultResponseMimeType;
+
+      cb(handledParams, (status, data) =>
+      {
+        var httpStatus = GetHttpStatusFromResponseStatus(status);
+        send(httpStatus, res, data, mimeType);
       });
     }
   }
@@ -152,6 +159,8 @@ export enum ResponseStatus
 export enum HttpStatus
 {
   OK = 200,
+  BadRequest = 400,
+  Unauthorized = 401,
   NotFound = 404,
   Error = 500,
 }
@@ -194,7 +203,7 @@ export interface IAppParams
 
 export interface IAppCallback
 {
-  (mime: string, status: ResponseStatus, data: string): void;
+  (status: ResponseStatus, data: string): void;
 }
 
 /**
@@ -215,6 +224,24 @@ export interface IRequestParam
 
 /* HTTP Utils
  * ----------------------------------------------------- */
+function GetHttpStatusFromResponseStatus(status: ResponseStatus): HttpStatus
+{
+  switch(status)
+  {
+    case ResponseStatus.Success:      return HttpStatus.OK;
+    case ResponseStatus.Unauthorized: return HttpStatus.Unauthorized;
+    case ResponseStatus.Error:        return HttpStatus.Error;
+    default:
+      console.error("Invalid ResponseStatus: " + status);
+      return HttpStatus.Error;
+  }
+}
+
+function HandleAppParams(params: IRequestParam[]): IAppParams
+{
+  return {name: "..."};
+}
+
 export function getUrlPathname(req: HTTP.IncomingMessage)
 {
   return URL.parse(req.url).pathname;

@@ -13,11 +13,11 @@ var ResponseStatus = WS.ResponseStatus;
 export function SignIn(params: WS.IAppParams, cb: WS.IAppCallback)
 {
   console.log(params);
-  cb("text/html", ResponseStatus.Success, "content");
+  cb(ResponseStatus.Success, "SignIn Content");
 }
 
 export function SignOut(params: WS.IAppParams, cb: WS.IAppCallback)
 {
   console.log(params);
-  cb("text/html", ResponseStatus.Success, "content");
+  cb(ResponseStatus.Success, "SignOut Content");
 }

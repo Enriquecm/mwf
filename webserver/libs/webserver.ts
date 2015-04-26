@@ -278,10 +278,11 @@ function handleAppParams(
 
     for (var i in params)
     {
-      var param  = params[i];
-      var value  = null;
-      var source = param.source ? param.source : ParamSource.Playload;
-      var pType  = param.type   ? param.type   : ParamType.String;
+      var param    = params[i];
+      var value    = undefined;
+      var source   = param.source   ? param.source   : ParamSource.Playload;
+      var pType    = param.type     ? param.type     : ParamType.String;
+      var required = param.required ? param.required : true;
 
       switch(source)
       {
@@ -297,6 +298,12 @@ function handleAppParams(
         default:
           cb("Invalid param source " + param.source, null);
           return;
+      }
+
+      if (required && typeof value == "undefined")
+      {
+        cb('Required param "'+ param.name +'" not specified', null);
+        return;
       }
 
       switch(pType)

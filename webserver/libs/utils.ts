@@ -102,3 +102,10 @@ export function getRecursiveFilepaths(absoluteRootFilepath: string): string[]
 
   return filepaths;
 }
+
+/* Interfaces
+ * ----------------------------------------------------- */
+export interface IKeyValue<T>
+{
+  [index: string]: T
+}

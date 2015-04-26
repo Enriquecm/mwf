@@ -96,13 +96,21 @@ export class WebServer
   {
     this.routes[url] = (req, res) =>
     {
-      var handledParams: IAppParams = HandleAppParams(params);
-      var mimeType = routeMimeType ? routeMimeType : this.defaultResponseMimeType;
-
-      cb(handledParams, (status, data) =>
+      handleAppParams(req, params, (err, params) =>
       {
-        var httpStatus = GetHttpStatusFromResponseStatus(status);
-        send(httpStatus, res, data, mimeType);
+        var mimeType = routeMimeType ? routeMimeType : this.defaultResponseMimeType;
+
+        if (err)
+        {
+          send(HttpStatus.Error, res, UTILS.isDebug() ? err : "", mimeType);
+          return;
+        }
+
+        cb(params, (status, data) =>
+        {
+          var httpStatus = getHttpStatusFromResponseStatus(status);
+          send(httpStatus, res, data, mimeType);
+        });
       });
     }
   }
@@ -131,17 +139,12 @@ export class WebServer
  * ----------------------------------------------------- */
 export enum ParamSource
 {
-  URL, Playload, Cookie
+  Cookies, Playload, QueryString
 }
 
 export enum ParamType
 {
-  String, Number, Boolean, Object
-}
-
-export enum ParamFormat
-{
-  JSON
+  String, Number, Boolean
 }
 
 enum RouteType
@@ -211,7 +214,6 @@ export interface IAppCallback
  *   type     = ParamType.String
  *   required = true
  *   source   = ParamSource.Playload
- *   format   = ParamFormat.JSON
  */
 export interface IRequestParam
 {
@@ -219,12 +221,26 @@ export interface IRequestParam
   type?: ParamType;
   required?: boolean;
   source?: ParamSource;
-  format?: ParamFormat;
+}
+
+interface ICookies
+{
+  [index: string]: string
+}
+
+interface IQueryString
+{
+  [index: string]: string
+}
+
+interface IPlayload
+{
+  [index: string]: string
 }
 
 /* HTTP Utils
  * ----------------------------------------------------- */
-function GetHttpStatusFromResponseStatus(status: ResponseStatus): HttpStatus
+function getHttpStatusFromResponseStatus(status: ResponseStatus): HttpStatus
 {
   switch(status)
   {
@@ -237,9 +253,162 @@ function GetHttpStatusFromResponseStatus(status: ResponseStatus): HttpStatus
   }
 }
 
-function HandleAppParams(params: IRequestParam[]): IAppParams
+/**
+ *
+ * @param req
+ * @param params
+ * @param cb
+ * @todo handle required and report if required do not exist
+ * @todo maybe a non required param causes a bug when it do not exist
+ */
+function handleAppParams(
+  req: HTTP.IncomingMessage,
+  params: IRequestParam[],
+  cb: (err: string, appParams: IAppParams) => void): void
 {
-  return {name: "..."};
+  getHttpRequestParams(req, (err, cookies, queryString, playload) =>
+  {
+    if (err)
+    {
+      cb(err, null);
+      return;
+    }
+
+    var result: IAppParams = {};
+
+    for (var i in params)
+    {
+      var param  = params[i];
+      var value  = null;
+      var source = param.source ? param.source : ParamSource.Playload;
+      var pType  = param.type   ? param.type   : ParamType.String;
+
+      switch(source)
+      {
+        case ParamSource.Playload:
+          value = playload[param.name];
+          break;
+        case ParamSource.Cookies:
+          value = cookies[param.name];
+          break;
+        case ParamSource.QueryString:
+          value = queryString[param.name];
+          break;
+        default:
+          cb("Invalid param source " + param.source, null);
+          return;
+      }
+
+      switch(pType)
+      {
+        case ParamType.Boolean: value = Boolean(value); break;
+        case ParamType.Number:  value = Number(value);  break;
+        case ParamType.String:  value = String(value);  break;
+        default:
+          cb("Invalid param type " + param.type, null);
+          return;
+      }
+
+      result[param.name] = value;
+    }
+    cb(null, result);
+  });
+}
+
+/**
+ * Request params from Cookies, Playload and QueryString
+ */
+function getHttpRequestParams(
+  req: HTTP.IncomingMessage,
+  cb: (
+    err: string,
+    cookies: ICookies,
+    queryString: IQueryString,
+    playload: IPlayload) => void
+): void
+{
+  getHttpResquetPlayload(req, (err, playload) =>
+  {
+    if (err)
+    {
+      cb(err, null, null, null);
+      return;
+    }
+
+    var cookies     = getHttpRequestCookies(req);
+    var queryString = getHttpRequestQueryString(req);
+
+    cb(null, cookies, queryString, playload);
+  });
+}
+
+function getHttpResquetPlayload(
+  req: HTTP.IncomingMessage,
+  cb: (err: string, playload: IPlayload) => void)
+{
+  var data: string = "";
+
+  req.on("data", function(chunk)
+  {
+    data += chunk;
+  });
+
+  req.on("end", function()
+  {
+    try
+    {
+      var keyValue: UTILS.IKeyValue<any> = {};
+      keyValue = getKeyValueFromStringAccordingToMimeType(req.headers["content-type"], data);
+      cb(null, keyValue);
+    }
+    catch(err)
+    {
+      cb(err.message, {});
+    }
+  });
+
+  req.on("error", function(err)
+  {
+    cb(err.message, {});
+  });
+}
+
+function getKeyValueFromStringAccordingToMimeType(mime: string, data: string): UTILS.IKeyValue<any>
+{
+  if (mime == getMimeType(SupportedExt.JSON))
+  {
+    return JSON.parse(data);
+  }
+  else
+  {
+    var err = "Unable to convert data to key-value because the mime " + mime +  " is not supported.";
+    throw new Error(err);
+  }
+}
+
+function getHttpRequestCookies(req: HTTP.IncomingMessage): ICookies
+{
+  if (!req.headers.hasOwnProperty("cookie"))
+  {
+    return {};
+  }
+
+  var cookies: ICookies = {};
+  var parts = req.headers.cookie.split(";");
+
+  for (var i in parts)
+  {
+    var pair = parts[i].trim().split("=");
+    cookies[pair[0]] = decodeURIComponent(pair[1]);
+  }
+
+  return cookies;
+}
+
+function getHttpRequestQueryString(req: HTTP.IncomingMessage): IQueryString
+{
+  var urlParts = URL.parse(req.url, true);
+  return urlParts.query;
 }
 
 export function getUrlPathname(req: HTTP.IncomingMessage)
@@ -263,13 +432,4 @@ export function sendFile(
   mime: string): void
 {
   send(HttpStatus.OK, res, buffer.toString(), mime);
-}
-
-export function sendJSON(res: HTTP.ServerResponse, json: Object): void
-{
-  send(
-    HttpStatus.OK,
-    res,
-    JSON.stringify(json),
-    getMimeType(SupportedExt.JSON));
 }

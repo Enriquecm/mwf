@@ -44,7 +44,7 @@ websrv.addAppRoute("/api/signin",
   APP.SignIn);
 
 websrv.addAppRoute("/api/signout",
-  [{name: "token", source: Source.Cookie}],
+  [{name: "token", source: Source.Cookies}],
   APP.SignOut);
 
 /* Start listening

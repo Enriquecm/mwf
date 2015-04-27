@@ -15,6 +15,8 @@ var SupportedExt = UTL.SupportedExt;
 
 /**
  * WebServer
+ * @todo Implement Last Modified 304 to cache some files
+ * @todo Implement Gzip to reduce transferation between server and client
  * ----------------------------------------------------- */
 export class WebServer
 {

@@ -2,16 +2,16 @@
 
 /* Namespaces
  * ----------------------------------------------------- */
-import FS    = require("fs");
-import HTTP  = require("http");
-import PATH  = require("path");
-import URL   = require("url");
-import UTILS = require("./utils");
+import FS   = require("fs");
+import HTTP = require("http");
+import PATH = require("path");
+import URL  = require("url");
+import UTL  = require("./utils");
 
 /* Facilities
  * ----------------------------------------------------- */
-var getMimeType  = UTILS.getMimeType;
-var SupportedExt = UTILS.SupportedExt;
+var getMimeType  = UTL.getMimeType;
+var SupportedExt = UTL.SupportedExt;
 
 /**
  * WebServer
@@ -73,7 +73,7 @@ export class WebServer
     }
     else if(stat.isDirectory())
     {
-      var urls = UTILS.getRecursiveFilepaths(rootFilepath);
+      var urls = UTL.getRecursiveFilepaths(rootFilepath);
       for (var i in urls)
       {
         var url = (virtual ? virtual : path) + urls[i];
@@ -102,7 +102,11 @@ export class WebServer
 
         if (err)
         {
-          send(HttpStatus.Error, res, UTILS.isDebug() ? err : "", mimeType);
+          send(
+            RequestParamError.Failed ? HttpStatus.Error : HttpStatus.BadRequest,
+            res,
+            UTL.isDebug() ? err.message : "",
+            mimeType);
           return;
         }
 
@@ -124,7 +128,7 @@ export class WebServer
   {
     this.caches[url] = {
       buffer: FS.readFileSync(filepath),
-      mime: UTILS.getFileMimeType(filepath)
+      mime: UTL.getFileMimeType(filepath)
     };
 
     this.routes[url] = (req, res) => {
@@ -166,6 +170,11 @@ export enum HttpStatus
   Unauthorized = 401,
   NotFound = 404,
   Error = 500,
+}
+
+enum RequestParamError
+{
+  Failed, Requirement
 }
 
 /* Interfaces
@@ -223,6 +232,11 @@ export interface IRequestParam
   source?: ParamSource;
 }
 
+interface IRequestParamError extends UTL.IError
+{
+  code: RequestParamError
+}
+
 interface ICookies
 {
   [index: string]: string
@@ -264,13 +278,14 @@ function getHttpStatusFromResponseStatus(status: ResponseStatus): HttpStatus
 function handleAppParams(
   req: HTTP.IncomingMessage,
   params: IRequestParam[],
-  cb: (err: string, appParams: IAppParams) => void): void
+  cb: (err: IRequestParamError, appParams: IAppParams) => void): void
 {
   getHttpRequestParams(req, (err, cookies, queryString, playload) =>
   {
     if (err)
     {
-      cb(err, null);
+      cb({code: RequestParamError.Failed, message: err}, null);
+
       return;
     }
 
@@ -280,9 +295,9 @@ function handleAppParams(
     {
       var param    = params[i];
       var value    = undefined;
-      var source   = param.source   ? param.source   : ParamSource.Playload;
-      var pType    = param.type     ? param.type     : ParamType.String;
-      var required = param.required ? param.required : true;
+      var source   = UTL.GetVar(param.source, ParamSource.Playload);
+      var pType    = UTL.GetVar(param.type, ParamType.String);
+      var required = UTL.GetVar(param.required, true);
 
       switch(source)
       {
@@ -296,14 +311,23 @@ function handleAppParams(
           value = queryString[param.name];
           break;
         default:
-          cb("Invalid param source " + param.source, null);
+          var errMsg = "Failed getting the param from correct source. Source: "
+            + param.source + " do not exists.";
+
+          cb({code: RequestParamError.Failed, message: errMsg}, null);
           return;
       }
 
-      if (required && typeof value == "undefined")
+      if (!UTL.IsDefined(value))
       {
-        cb('Required param "'+ param.name +'" not specified', null);
-        return;
+        if (required)
+        {
+          var errMsg = "Required param " + param.name + " must be defined because it is required";
+          cb({code: RequestParamError.Requirement, message: errMsg}, null);
+          return;
+        }
+
+        continue;
       }
 
       switch(pType)
@@ -312,7 +336,8 @@ function handleAppParams(
         case ParamType.Number:  value = Number(value);  break;
         case ParamType.String:  value = String(value);  break;
         default:
-          cb("Invalid param type " + param.type, null);
+          var errMsg = "Param " + param.name + " has an invalid type definition. Type: " + pType;
+          cb({code: RequestParamError.Failed, message: errMsg}, null);
           return;
       }
 
@@ -342,8 +367,16 @@ function getHttpRequestParams(
       return;
     }
 
-    var cookies     = getHttpRequestCookies(req);
-    var queryString = getHttpRequestQueryString(req);
+    try
+    {
+      var cookies     = getHttpRequestCookies(req);
+      var queryString = getHttpRequestQueryString(req);
+    }
+    catch(err)
+    {
+      cb(err.message, null, null, null);
+      return;
+    }
 
     cb(null, cookies, queryString, playload);
   });
@@ -364,7 +397,7 @@ function getHttpResquetPlayload(
   {
     try
     {
-      var keyValue: UTILS.IKeyValue<any> = {};
+      var keyValue: UTL.IKeyValue<any> = {};
       keyValue = getKeyValueFromStringAccordingToMimeType(req.headers["content-type"], data);
       cb(null, keyValue);
     }
@@ -380,42 +413,69 @@ function getHttpResquetPlayload(
   });
 }
 
-function getKeyValueFromStringAccordingToMimeType(mime: string, data: string): UTILS.IKeyValue<any>
+function getKeyValueFromStringAccordingToMimeType(mime: string, data: string): UTL.IKeyValue<any>
 {
   if (mime == getMimeType(SupportedExt.JSON))
   {
-    return JSON.parse(data);
+    try
+    {
+      return JSON.parse(data);
+    }
+    catch(err)
+    {
+      var errMsg = "Cannot convert string according to mime type. JSON parse error: ";
+      errMsg += err.message;
+      err.message = errMsg;
+      throw err;
+    }
   }
   else
   {
-    var err = "Unable to convert data to key-value because the mime " + mime +  " is not supported.";
-    throw new Error(err);
+    var errMsg = "Unable to convert data to key-value because the mime ";
+    errMsg += mime +  " is not supported.";
+    throw new Error(errMsg);
   }
 }
 
 function getHttpRequestCookies(req: HTTP.IncomingMessage): ICookies
 {
-  if (!req.headers.hasOwnProperty("cookie"))
+  try
   {
-    return {};
+    if (!req.headers.hasOwnProperty("cookie"))
+    {
+      return {};
+    }
+
+    var cookies: ICookies = {};
+    var parts = req.headers.cookie.split(";");
+
+    for (var i in parts)
+    {
+      var pair = parts[i].trim().split("=");
+      cookies[pair[0]] = decodeURIComponent(pair[1]);
+    }
+
+    return cookies;
   }
-
-  var cookies: ICookies = {};
-  var parts = req.headers.cookie.split(";");
-
-  for (var i in parts)
+  catch(err)
   {
-    var pair = parts[i].trim().split("=");
-    cookies[pair[0]] = decodeURIComponent(pair[1]);
+    err.message = "Failed to request HTTP cookie: " + err.message;
+    throw err;
   }
-
-  return cookies;
 }
 
 function getHttpRequestQueryString(req: HTTP.IncomingMessage): IQueryString
 {
-  var urlParts = URL.parse(req.url, true);
-  return urlParts.query;
+  try
+  {
+    var urlParts = URL.parse(req.url, true);
+    return urlParts.query;
+  }
+  catch(err)
+  {
+    err.message = "Failed to request HTTP query string: " + err.message;
+    throw err;
+  }
 }
 
 export function getUrlPathname(req: HTTP.IncomingMessage)

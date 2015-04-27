@@ -14,6 +14,18 @@ export function isDebug(): boolean
   return typeof global.v8debug == "object";
 }
 
+/* Programming
+ * ----------------------------------------------------- */
+export function IsDefined(variable)
+{
+  return typeof variable != "undefined";
+}
+
+export function GetVar(variable, defaultValue)
+{
+  return IsDefined(variable) ? variable : defaultValue;
+}
+
 /* MimeType
  * ----------------------------------------------------- */
 export enum SupportedExt
@@ -108,4 +120,10 @@ export function getRecursiveFilepaths(absoluteRootFilepath: string): string[]
 export interface IKeyValue<T>
 {
   [index: string]: T
+}
+
+export interface IError
+{
+  code: number;
+  message: string;
 }

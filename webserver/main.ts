@@ -2,10 +2,10 @@
 
 /* Namespaces
  * ----------------------------------------------------- */
-import APP   = require("./app");
-import PATH  = require("path");
-import UTILS = require("./libs/utils");
-import WS    = require("./libs/webserver");
+import APP  = require("./app");
+import PATH = require("path");
+import UTL  = require("./libs/utils");
+import WS   = require("./libs/webserver");
 
 /* Facilities
  * ----------------------------------------------------- */
@@ -22,7 +22,7 @@ websrv.setFavicon("/assets/favicon.ico");
 
 /* Static routes
  * ----------------------------------------------------- */
-if (UTILS.isDebug())
+if (UTL.isDebug())
 {
   websrv.addStaticRoute("/src/css/", "/css/");
   websrv.addStaticRoute("/src/html/", "/");
@@ -40,7 +40,8 @@ else
 /* App routes
  * ----------------------------------------------------- */
 websrv.addAppRoute("/api/signin",
-  [{name: "encryption"}],
+  [{name: "encryption"},
+    {name: "age", type: Type.Number, required: false}],
   APP.SignIn);
 
 websrv.addAppRoute("/api/signout",
